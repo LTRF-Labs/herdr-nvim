@@ -6,7 +6,7 @@ A Neovim plugin by [LTRF Labs](https://github.com/LTRF-Labs). Send prompts, file
 
 - Neovim 0.11 or later, running inside Herdr.
 - The `herdr` CLI in `PATH`.
-- Pi installed if you want the plugin to start an agent when none is ready.
+- Pi installed if you want the plugin to start an agent when none exists.
 
 Setup fails outside Herdr. The plugin uses the Herdr CLI only. No agent extension or Node.js dependencies are required.
 
@@ -56,11 +56,11 @@ Set `set_default_keymaps = false` to use your own mappings.
 
 ## Agent selection
 
-For each prompt, the plugin reads the live Neovim pane and finds the first agent in that workspace with status `idle` or `done`. It supports all agent kinds recognized by Herdr. It skips the caller pane and agents with status `working`, `blocked`, or `unknown`.
+For each prompt, the plugin reads the live Neovim pane and finds the first agent in that workspace with status `idle` or `done`. If none is ready, it uses the first existing agent in that workspace, including agents with status `working`, `blocked`, or `unknown`. It supports all agent kinds recognized by Herdr and skips the caller pane. If Herdr rejects the prompt, the plugin shows the error and does not start Pi.
 
-If no agent is ready, the plugin creates a tab in the same workspace and starts Pi in Neovim's current directory. Editor focus does not change. Herdr waits for Pi to be ready before it sends the prompt.
+Only if no other agent exists in the workspace, the plugin creates a tab in the same workspace and starts Pi in Neovim's current directory. Editor focus does not change. Herdr waits for Pi to be ready before it sends the prompt.
 
-CLI calls run asynchronously. Prompt text is passed as one argument, never as a shell command. Prompts are sent in order. Each prompt selects a ready agent again, so another Pi tab can be created if all agents are busy.
+CLI calls run asynchronously. Prompt text is passed as one argument, never as a shell command. Prompts are sent in order. Each prompt selects an agent again. Busy agents do not cause new Pi tabs.
 
 The plugin does not wait for an answer, use another workspace, or retry a failed prompt. Errors appear in Neovim. If startup fails, the new tab stays open for inspection.
 

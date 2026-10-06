@@ -28,13 +28,15 @@ local function cli(args, cb)
   if not ok then vim.schedule(function() cb(tostring(err)) end) end
 end
 
-local function ready_agent(agents, pane)
+local function workspace_agent(agents, pane)
+  local fallback
   for _, agent in ipairs(agents) do
-    if agent.workspace_id == pane.workspace_id and agent.pane_id ~= pane.pane_id
-      and (agent.agent_status == "idle" or agent.agent_status == "done") then
-      return agent.pane_id
+    if agent.workspace_id == pane.workspace_id and agent.pane_id and agent.pane_id ~= pane.pane_id then
+      fallback = fallback or agent.pane_id
+      if agent.agent_status == "idle" or agent.agent_status == "done" then return agent.pane_id end
     end
   end
+  return fallback
 end
 
 -- Resolve the live caller, not the focused pane or an inherited workspace ID.
@@ -46,7 +48,7 @@ local function resolve_agent(cwd, cb)
     cli({ "agent", "list" }, function(list_err, listed)
       if list_err then cb(list_err); return end
       if type(listed.agents) ~= "table" then cb("Herdr did not return an agent list"); return end
-      local target = ready_agent(listed.agents, pane)
+      local target = workspace_agent(listed.agents, pane)
       if target then cb(nil, target); return end
       -- Start a new agent without moving focus away from the editor.
       cli({ "tab", "create", "--workspace", pane.workspace_id, "--cwd", cwd, "--no-focus" }, function(create_err, created)

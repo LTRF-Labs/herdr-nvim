@@ -50,7 +50,27 @@ vim.env.HERDR_WORKSPACE_ID = "w99"
 run({ current("w7"), agents({ agent("w99:p2", "w99", "idle"), agent("w7:p2", "w7", "idle") }), { result = {} } })
 assert(calls[3][4] == "w7:p2")
 
-run({ current(), agents({ agent("w1:p2", "w1", "working") }),
+-- Existing agents must not cause a new Pi tab, regardless of status or kind.
+for _, status in ipairs({ "working", "blocked", "unknown" }) do
+  for _, kind in ipairs({ "codex", "pi", "claude" }) do
+    local existing = agent("w1:p2", "w1", status)
+    existing.agent_kind = kind
+    run({ current(), agents({ agent("w2:p1", "w2", "idle"), agent("w1:p1", "w1", "idle"), existing }),
+      { result = {} } })
+    assert(#calls == 3 and calls[3][3] == "prompt" and calls[3][4] == "w1:p2",
+      "Must reuse an existing workspace agent: " .. kind .. " " .. status)
+  end
+end
+run({ current(), agents({ agent("w1:p2", "w1", "working"), agent("w1:p3", "w1", "unknown") }),
+  { result = {} } })
+assert(calls[3][4] == "w1:p2", "Must use the first workspace agent when none is ready")
+run({ current(), agents({ agent("w1:p2", "w1", "blocked") }),
+  { code = 1, stderr = "agent is blocked" } })
+assert(#calls == 3 and notices[1][1] == "agent is blocked" and notices[1][2] == vim.log.levels.ERROR,
+  "A rejected prompt must report the error without starting Pi")
+
+-- Start Pi only when there is no other agent in the caller workspace.
+run({ current(), agents({ agent("w2:p1", "w2", "idle"), agent("w1:p1", "w1", "idle") }),
   { result = { root_pane = { pane_id = "w1:p8" } } }, { result = {} }, { result = {} } })
 assert(#calls == 5)
 assert(calls[3][3] == "create" and calls[3][5] == "w1")
